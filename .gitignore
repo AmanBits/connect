@@ -1,0 +1,20 @@
+# Backend build
+connect-backend-springboot/target/
+connect-backend-springboot/.mvn/wrapper/maven-wrapper.jar
+
+# Frontend build
+connect-frontend-react/node_modules/
+connect-frontend-react/build/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.classpath
+*.project
+.settings/
+.sts4-cache/
+
+
+/.metadata/
+/connect-backend-springboot/
