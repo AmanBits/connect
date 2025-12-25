@@ -19,9 +19,9 @@ public class RedisSessionService {
 	public void save(String userId, String deviceId, String refreshToken, long ttlMs) {
 
 		String key = PREFIX + userId + ":" + deviceId;
-		System.out.println("SESSION SERVICE START");
+		
 		redisTemplate.opsForValue().set(key, refreshToken, ttlMs, TimeUnit.MINUTES);
-		System.out.println("SESSION SERVICE END");
+		
 	}
 
 	public boolean isValid(String userId, String deviceId, String refreshToken) {
