@@ -1,6 +1,9 @@
 package com.connect.start.entity;
 
+import java.util.Collection;
 import java.util.UUID;
+
+import org.springframework.security.core.GrantedAuthority;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,6 +35,16 @@ public class User {
 	
 	private String picture;
 	
+	private String role;
+	
+	public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
+	}
+
 	public String getPicture() {
 		return picture;
 	}
@@ -97,7 +110,8 @@ public class User {
 	public void setEmailVerified(boolean emailVerified) {
 		this.emailVerified = emailVerified;
 	}
-	
+
+
 	
 	
 	

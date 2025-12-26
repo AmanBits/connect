@@ -1,27 +1,27 @@
 import React, { useState } from "react";
 import "../assets/css/auth.css";
-import axios from "axios";
+import api from "../assets/js/api";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault(); // prevent page reload
+
     try {
-      const response = await axios.post(
-        "http://localhost:8080/auth/login", // your backend URL
+      const response = await api.post(
+        "/auth/login",
+        { email, password },{ withCredentials: true },
         {
-          email: "user@example.com",
-          password: "123456",
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Device-Id": "my-device-123", // custom header
-          },
+          headers: { "Device-Id": "my-device-123" },
         }
       );
 
+      localStorage.setItem("accessToken", response.data.accessToken);
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+
+      window.location.href = "/dashboard"; // redirect after login
       console.log("Login response:", response.data);
     } catch (error) {
       console.error("Login error:", error.response?.data || error.message);
@@ -37,48 +37,46 @@ export default function Auth() {
   };
 
   return (
-    <>
-      <div className="login-container">
-        <div className="login-box">
-          <h2>Login</h2>
-          <form>
-            <div className="input-group">
-              <label>Email</label>
-              <input
-                type="email"
-                name="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(console.log(e.target.value))}
-                required
-              />
-            </div>
-            <div className="input-group">
-              <label>Password</label>
-              <input
-                type="password"
-                name="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <button type="submit" className="btn-login" onClick={handleLogin}>
-              Login
-            </button>
-          </form>
-
-          <div className="divider">OR</div>
-
-          <button className="btn-oauth google" onClick={googleAuth}>
-            <span className="icon">G</span> Login with Google
+    <div className="login-container">
+      <div className="login-box">
+        <h2>Login</h2>
+        <form onSubmit={handleLogin}>
+          <div className="input-group">
+            <label>Email</label>
+            <input
+              type="email"
+              name="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="input-group">
+            <label>Password</label>
+            <input
+              type="password"
+              name="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" className="btn-login">
+            Login
           </button>
-          <button className="btn-oauth github" onClick={githubAuth}>
-            <span className="icon">GH</span> Login with GitHub
-          </button>
-        </div>
+        </form>
+
+        <div className="divider">OR</div>
+
+        <button className="btn-oauth google" onClick={googleAuth}>
+          <span className="icon">G</span> Login with Google
+        </button>
+        <button className="btn-oauth github" onClick={githubAuth}>
+          <span className="icon">GH</span> Login with GitHub
+        </button>
       </div>
-    </>
+    </div>
   );
 }

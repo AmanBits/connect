@@ -1,71 +1,74 @@
 package com.connect.start.security;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.connect.start.entity.User;
-import com.connect.start.repository.UserRepository;
+import com.connect.start.service.CustomUserDetailsService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
-
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-	private JwtTokenProvider jwtProvider;
-	private UserRepository userRepo;
-	
-	
-	
+    private final JwtTokenProvider jwtTokenProvider;
+    private final CustomUserDetailsService userDetailsService;
 
-	public JwtAuthenticationFilter(JwtTokenProvider jwtProvider, UserRepository userRepo) {
-		super();
-		this.jwtProvider = jwtProvider;
-		this.userRepo = userRepo;
-	}
+    public JwtAuthenticationFilter(
+            JwtTokenProvider jwtTokenProvider,
+            CustomUserDetailsService userDetailsService
+    ) {
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.userDetailsService = userDetailsService;
+    }
 
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
+        String token = extractTokenFromCookie(request);
 
+        if (token != null && jwtTokenProvider.isValid(token)) {
 
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-			throws ServletException, IOException {
-		
-	
-		String header = request.getHeader("Authorization");
-		
-		
-		
-		if(header !=null && header.startsWith("Bearer ")) {
-			
-			    String token = header.substring(7);
-			    String userId = jwtProvider.getEmailFromToken(token);
-			    UUID uid = UUID.fromString(userId);
-			    User user = userRepo.findById(uid).orElse(null);
-			    
-			    if(user!=null) {
-			    	UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(user, null,List.of());
-			    	SecurityContextHolder.getContext().setAuthentication(auth);
-			    }
-			    
-		}
-		
-		
-		
-		filterChain.doFilter(request, response);
+            String email = jwtTokenProvider.getEmailFromToken(token);
 
-	}
-	
-	
+           
+            UserDetails userDetails =
+                    userDetailsService.loadUserByUsername(email);
 
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+
+            SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private String extractTokenFromCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
+
+        for (Cookie cookie : request.getCookies()) {
+            if ("ACCESS_TOKEN".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
 }

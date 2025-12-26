@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
@@ -20,9 +21,9 @@ public class JwtTokenProvider {
 	private final long REFRESH_TOKEN_EXPIRATION = 1000 * 60 * 60;
 	
 	
-	public String generateAccessToken(String userId) {
+	public String generateAccessToken(String email) {
 		return Jwts.builder()
-				.setSubject(userId)
+				.setSubject(email)
 				.claim("type", "ACCESS")
 				.setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis()+ACCESS_TOKEN_EXPIRATION))
@@ -31,14 +32,24 @@ public class JwtTokenProvider {
 		
 	}
 	
-	public String generateRefreshToken(String userId) {
+	public String generateRefreshToken(String email) {
 		return Jwts.builder()
-				.setSubject(userId)
+				.setSubject(email)
 				.claim("type", "REFRESH")
 				.setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis()+REFRESH_TOKEN_EXPIRATION))
 				.signWith(Keys.hmacShaKeyFor(SECRET.getBytes()))
 				.compact();
+	}
+	
+	public boolean isValid(String token) {
+		try {
+			Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token);
+			return true;
+		}catch (JwtException e) {
+			// TODO: handle exception
+			return false;
+		}
 	}
 	
 	public String getEmailFromToken(String token) {

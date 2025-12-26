@@ -42,13 +42,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
 	@Override
 	public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+		
+		
 
-//		String token = Arrays.stream(session.getHandshakeHeaders().get("cookie").toString().split(";"))
-//				.map(String::trim).filter(c -> c.startsWith("ACCESS_TOKEN="))
-//				.map(c -> c.substring("ACCESS_TOKEN=".length())).findFirst().orElse(null);
-//		
-//		System.out.println("TOKEN : "+token);
-		String token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI3YjhhOTRjZC1iNzg3LTQwYzgtODBlNS01MmI3MmRhYzZjZDgiLCJ0eXBlIjoiQUNDRVNTIiwiaWF0IjoxNzY2NjY4MTMwLCJleHAiOjE3NjY2NjkwMzB9.XeIEoj7YBbwtY679oCwiVy21GjAmXiNO_iGmxe_vLIqYoaMKYdtPO7G_pQRsNhsibFNsSQoRwCpZcmvKZyyUqw";
+		String token = Arrays.stream(session.getHandshakeHeaders().get("cookie").toString().split(";"))
+				.map(String::trim).filter(c -> c.startsWith("ACCESS_TOKEN="))
+				.map(c -> c.substring("ACCESS_TOKEN=".length())).findFirst().orElse(null);
+		
+		System.out.println("TOKEN : " + token);
 
 		if (jwtTokenProvider.getEmailFromToken(token) == null) {
 			session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Invalid Token"));
