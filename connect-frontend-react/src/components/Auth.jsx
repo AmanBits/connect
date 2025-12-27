@@ -12,14 +12,14 @@ export default function Auth() {
     try {
       const response = await api.post(
         "/auth/login",
-        { email, password },{ withCredentials: true },
+        { email, password },
         {
           headers: { "Device-Id": "my-device-123" },
         }
       );
 
-      localStorage.setItem("accessToken", response.data.accessToken);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
+      // localStorage.setItem("accessToken", response.data.accessToken);
+      // localStorage.setItem("refreshToken", response.data.refreshToken);
 
       window.location.href = "/dashboard"; // redirect after login
       console.log("Login response:", response.data);

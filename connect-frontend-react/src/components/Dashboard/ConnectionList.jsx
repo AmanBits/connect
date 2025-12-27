@@ -1,112 +1,89 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "../../assets/css/dashboard/profileCarousel.css";
+import axios from "../../assets/js/api";
 
-const users = [
-  {
-    name: "John",
-    area: "New York",
-    img: "https://randomuser.me/api/portraits/men/1.jpg",
-  },
-  {
-    name: "Emma",
-    area: "London",
-    img: "https://randomuser.me/api/portraits/women/2.jpg",
-  },
-  {
-    name: "Mike",
-    area: "Paris",
-    img: "https://randomuser.me/api/portraits/men/3.jpg",
-  },
-  {
-    name: "Sophia",
-    area: "Berlin",
-    img: "https://randomuser.me/api/portraits/women/4.jpg",
-  },
-  {
-    name: "David",
-    area: "Tokyo",
-    img: "https://randomuser.me/api/portraits/men/5.jpg",
-  },
-  {
-    name: "Olivia",
-    area: "Rome",
-    img: "https://randomuser.me/api/portraits/women/6.jpg",
-  },
-  {
-    name: "James",
-    area: "Sydney",
-    img: "https://randomuser.me/api/portraits/men/7.jpg",
-  },
-];
+export default function ConnectionList({ openBox }) {
+  const [users, setUsers] = useState([]); // ✅ must be array
+  const [index, setIndex] = useState(0);
 
-export default function ConnectionList({nearbyUsers,openBox}) {
-  const CARD_WIDTH = 220; // px (MUST match CSS)
+  const CARD_WIDTH = 220; // MUST match CSS
   const VISIBLE = 5;
   const CENTER = Math.floor(VISIBLE / 2);
 
-  const [index, setIndex] = useState(CENTER);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await axios.get("/api/my/users");
+        setUsers(res?.data?.data || []);
+        setIndex(CENTER); // reset index after data load
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  if (users.length === 0) {
+    return <div className="carousel-container">No users found</div>;
+  }
 
   const min = CENTER;
   const max = users.length - CENTER - 1;
 
   const prev = () => {
-    if (index > min) setIndex(index - 1);
+    if (index > min) setIndex((prev) => prev - 1);
   };
 
   const next = () => {
-    if (index < max) setIndex(index + 1);
+    if (index < max) setIndex((prev) => prev + 1);
   };
 
   return (
     <div className="carousel-container">
-      <button className="nav-btn prev" onClick={prev}>
+      <button className="nav-btn prev" onClick={prev} disabled={index <= min}>
         ‹
       </button>
 
       <div className="carousel-window">
-        <span>Connected People : Around you in </span><select name="size">
-          <option value="2">2KM</option>
-          <option value="2">4KM</option>
-          <option value="2">6KM</option>
-          <option value="2">8KM</option>
-          <option value="2">10KM</option>
-          <option value="2">12KM</option>
-          <option value="2">14KM</option>
-          <option value="2">16KM</option>
-          <option value="2">18KM</option>
-          <option value="2">20KM</option>
-          <option value="2">30KM</option>
-        </select>
+        <div className="carousel-header">
+          <span>Connected People : Around you in </span>
+          <select>
+            {[2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 30].map((km) => (
+              <option key={km} value={km}>
+                {km} KM
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div
           className="carousel"
           style={{
             transform: `translateX(-${(index - CENTER) * CARD_WIDTH}px)`,
           }}
         >
-          {nearbyUsers.map((user, i) => {
+          {users.map((user, i) => {
             const distance = Math.abs(i - index);
 
             return (
               <div
-                key={i}
+                key={user.id || i}
                 className={`profile ${i === index ? "active" : ""}`}
                 style={{
                   opacity: distance > 2 ? 0.3 : 0.6,
                   transform: `scale(${i === index ? 1 : 0.85})`,
                 }}
-               
               >
-                {/* <img src={user.img} alt={user} /> */}
-                <h3>{user}</h3>
-                <button  onClick={(e)=>openBox(user)}>Connect</button>
-                {/* <p>{user.area}</p> */}
+                <h3>{user.name}</h3>
+                <button onClick={() => openBox(user)}>Connect</button>
               </div>
             );
           })}
         </div>
       </div>
 
-      <button className="nav-btn next" onClick={next}>
+      <button className="nav-btn next" onClick={next} disabled={index >= max}>
         ›
       </button>
     </div>

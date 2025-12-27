@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "../../assets/js/axiosConfig";
+import axios from "../../assets/js/api";
 
 export default function MessageBox({ hideBox, recieved }) {
   const [message, setMessage] = useState({

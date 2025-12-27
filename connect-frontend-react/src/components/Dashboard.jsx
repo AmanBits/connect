@@ -3,6 +3,8 @@ import Navbar from "./Dashboard/Navbar";
 import ConnectionList from "./Dashboard/ConnectionList";
 import MessageBox from "./Dashboard/MessageBox";
 
+
+
 export default function Dashboard() {
   const wsRef = useRef(null);
 
@@ -16,10 +18,14 @@ export default function Dashboard() {
     const socket = new WebSocket("ws://localhost:8080/ws");
     wsRef.current = socket;
 
-   
-
     socket.onopen = () => {
       console.log("WebSocket connected");
+
+
+      const interval = setInterval(() => {
+        wsRef.current.send(JSON.stringify({ type: "HEARTBEAT" }));
+      }, 15000);
+
 
       // Send location if already available
       if (location) {
@@ -37,6 +43,7 @@ export default function Dashboard() {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log(data);
 
         if (data.type === "MESSAGE") {
           console.log("Message from:", data.from, data.message);
@@ -61,6 +68,7 @@ export default function Dashboard() {
 
     socket.onclose = () => {
       console.log("WebSocket closed");
+      clearInterval(interval);
     };
 
     return () => socket.close();
@@ -127,6 +135,7 @@ export default function Dashboard() {
   const [recepient, setRecepient] = useState([]);
 
   const openBox = (user) => {
+    console.log(user);
     if (!hideBox) {
       setRecepient(user);
       setHideBox(true);
