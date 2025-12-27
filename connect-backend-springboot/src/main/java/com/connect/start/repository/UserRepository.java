@@ -15,4 +15,5 @@ import java.util.List;
 public interface UserRepository extends JpaRepository<User, UUID> {
    Optional<User> findByEmail(String email);
    Optional<User> findById(UUID userId);
+   List<User> findAll();
 }
