@@ -1,5 +1,6 @@
 package com.connect.start.controller;
 
+import java.time.Duration;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,34 +86,39 @@ public class AuthController {
 	    UserDetails user = (UserDetails) authentication.getPrincipal();
 
 	  
-	    String accessTokenValue = jwt.generateAccessToken(user.getUsername());
+	    String accessTokenValue = jwt.generateAccessToken(user.getUsername(),"USER");
+	    String refreshTokenValue = jwt.generateRefreshToken(user.getUsername());
 
-	    ResponseCookie accessToken = ResponseCookie.from("ACCESS_TOKEN", accessTokenValue)
+	    ResponseCookie accessTokenCookie = ResponseCookie
+	            .from("ACCESS_TOKEN", accessTokenValue)
 	            .httpOnly(true)
-	            .secure(false) 
-	            .path("/")
-	            .sameSite("Lax")
-	            .maxAge(15 * 60) // 15 minutes
+	            .secure(false)              // true only for HTTPS
+	            .sameSite("Lax")            // REQUIRED for WS
+	            .path("/")                  // REQUIRED for /ws
+	            .maxAge(Duration.ofMinutes(15))
 	            .build();
 
-	    ResponseCookie refreshToken = ResponseCookie.from("REFRESH_TOKEN", accessTokenValue)
+	    ResponseCookie refreshTokenCookie = ResponseCookie
+	            .from("REFRESH_TOKEN", refreshTokenValue) // ✅ FIXED
 	            .httpOnly(true)
 	            .secure(false)
+	            .sameSite("Lax")
 	            .path("/")
-	            .maxAge(7 * 24 * 60 * 60) // 7 days
+	            .maxAge(Duration.ofDays(7))
 	            .build();
+
 
 	 
 	    redisSessionService.save(
 	            user.getUsername(),
 	            deviceId,
-	            refreshToken.getValue(),
+	            refreshTokenValue,
 	            7 * 24 * 60 * 60
 	    );
 
 	    return ResponseEntity.ok()
-	            .header(HttpHeaders.SET_COOKIE, accessToken.toString())
-	            .header(HttpHeaders.SET_COOKIE, refreshToken.toString())
+	            .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
+	            .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
 	            .body(Map.of("message", "Login Successful"));
 	}
 
