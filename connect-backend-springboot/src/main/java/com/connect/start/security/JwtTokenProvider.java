@@ -21,10 +21,11 @@ public class JwtTokenProvider {
 
     // -------------------- GENERATE TOKENS --------------------
 
-    public String generateAccessToken(String email, String role) {
+    public String generateAccessToken(UUID userId,String email, String role) {
         return Jwts.builder()
                 .setSubject(email)
                 .setId(UUID.randomUUID().toString()) // jti
+                .claim("userId", userId.toString())
                 .claim("type", "ACCESS")
                 .claim("role", role)                // optional, for auth
                 .setIssuedAt(new Date())
@@ -33,11 +34,13 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String generateRefreshToken(String email) {
+    public String generateRefreshToken(UUID userId, String email, String role) {
         return Jwts.builder()
                 .setSubject(email)
                 .setId(UUID.randomUUID().toString()) // jti
+                .claim("userId", userId)
                 .claim("type", "REFRESH")
+                .claim("role", role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(Keys.hmacShaKeyFor(SECRET.getBytes()))
@@ -61,7 +64,7 @@ public class JwtTokenProvider {
 
     // -------------------- PARSE TOKEN --------------------
 
-    private Claims parseClaims(String token) {
+    public Claims parseClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(Keys.hmacShaKeyFor(SECRET.getBytes()))
                 .build()

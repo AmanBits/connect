@@ -30,7 +30,7 @@ public class User {
 	@Column(unique = true)
 	private String email;
 	
-	private String passwrod;
+	private String password;
 	
 	private String name;
 	
@@ -82,12 +82,12 @@ public class User {
 		this.email = email;
 	}
 
-	public String getPasswrod() {
-		return passwrod;
+	public String getPassword() {
+		return password;
 	}
 
-	public void setPasswrod(String passwrod) {
-		this.passwrod = passwrod;
+	public void setPassword(String password) {
+		this.password = password;
 	}
 
 	public String getName() {

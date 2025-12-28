@@ -29,8 +29,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 		OAuth2User user = (OAuth2User) authentication.getPrincipal();
 		String email = user.getAttribute("email");
 		
-		String token = jwt.generateAccessToken(email,"USER");
-		response.sendRedirect("http://localhost:5173/oauth-success?token=" + token);
+//		String token = jwt.generateAccessToken(13hsadgj-213123bnvn-123123,email,"USER");
+		response.sendRedirect("http://localhost:5173/oauth-success?token=" + "sadjksdgj786876");
 
 	}
 

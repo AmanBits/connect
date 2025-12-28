@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.connect.start.dto.LoginRequest;
 import com.connect.start.dto.SignupDTO;
+import com.connect.start.entity.CustomUserDetails;
 import com.connect.start.entity.User;
 import com.connect.start.repository.UserRepository;
 import com.connect.start.security.JwtTokenProvider;
@@ -59,7 +60,7 @@ public class AuthController {
 
 		User us = new User();
 		us.setEmail(req.getEmail());
-		us.setPasswrod(passwordEncoder.encode(req.getPassword()));
+		us.setPassword(passwordEncoder.encode(req.getPassword()));
 		us.setName(req.getName());
 
 		repo.save(us);
@@ -74,7 +75,7 @@ public class AuthController {
 	        @RequestHeader(value = "Device-Id", required = false) String deviceId
 	) {
 
-	   
+	
 	    Authentication authentication = authenticationManager.authenticate(
 	            new UsernamePasswordAuthenticationToken(
 	                    req.getEmail(),
@@ -83,13 +84,16 @@ public class AuthController {
 	    );
 
 	  
-	    UserDetails user = (UserDetails) authentication.getPrincipal();
-
+	
+	    CustomUserDetails user =
+	            (CustomUserDetails) authentication.getPrincipal();
+	    
+	   
 	  
-	    String accessTokenValue = jwt.generateAccessToken(user.getUsername(),"USER");
-	    String refreshTokenValue = jwt.generateRefreshToken(user.getUsername());
+	    String accessTokenValue = jwt.generateAccessToken(user.getId(),user.getUsername(),"USER");
+	    String refreshTokenValue = jwt.generateRefreshToken(user.getId(),user.getUsername(),"USER");
 
-	    ResponseCookie accessTokenCookie = ResponseCookie
+	    ResponseCookie accessTokenCookie = ResponseCookie 
 	            .from("ACCESS_TOKEN", accessTokenValue)
 	            .httpOnly(true)
 	            .secure(false)              // true only for HTTPS
@@ -110,7 +114,7 @@ public class AuthController {
 
 	 
 	    redisSessionService.save(
-	            user.getUsername(),
+	            user.getId().toString(),
 	            deviceId,
 	            refreshTokenValue,
 	            7 * 24 * 60 * 60
