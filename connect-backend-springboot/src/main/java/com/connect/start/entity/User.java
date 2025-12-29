@@ -1,128 +1,55 @@
 package com.connect.start.entity;
 
-import java.util.Collection;
-import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.security.core.GrantedAuthority;
-
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import lombok.Data;
 
 @Entity
 @Table(name="users")
-@Data
 public class User {
-	
 	
 	@Id
 	@GeneratedValue
 	private UUID id;
-	
-	@Column(unique = true)
 	private String email;
-	
 	private String password;
-	
-	private String name;
-	
-	private String provider;
-	
-	private String providerId;
-	
-	private String picture;
-	
+	private boolean enabled;
 	private String role;
-	
-	
-	@OneToOne
-	@JoinColumn(name="user_profile_fk_id")
-	private UserProfile userProfile;
-	
-
-	public String getRole() {
-		return role;
-	}
-
-	public void setRole(String role) {
-		this.role = role;
-	}
-
-	public String getPicture() {
-		return picture;
-	}
-
-	public void setPicture(String picture) {
-		this.picture = picture;
-	}
-
-	private boolean emailVerified = false;
-
 	public UUID getId() {
 		return id;
 	}
-
 	public void setId(UUID id) {
 		this.id = id;
 	}
-
 	public String getEmail() {
 		return email;
 	}
-
 	public void setEmail(String email) {
 		this.email = email;
 	}
-
 	public String getPassword() {
 		return password;
 	}
-
 	public void setPassword(String password) {
 		this.password = password;
 	}
-
-	public String getName() {
-		return name;
+	public boolean isEnabled() {
+		return enabled;
 	}
-
-	public void setName(String name) {
-		this.name = name;
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
 	}
-
-	public String getProvider() {
-		return provider;
+	public String getRole() {
+		return role;
 	}
-
-	public void setProvider(String provider) {
-		this.provider = provider;
+	public void setRole(String role) {
+		this.role = role;
 	}
-
-	public String getProviderId() {
-		return providerId;
-	}
-
-	public void setProviderId(String providerId) {
-		this.providerId = providerId;
-	}
-
-	public boolean isEmailVerified() {
-		return emailVerified;
-	}
-
-	public void setEmailVerified(boolean emailVerified) {
-		this.emailVerified = emailVerified;
-	}
-
-
+	
+	
 	
 	
 	
