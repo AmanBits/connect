@@ -2,6 +2,7 @@ package com.connect.start.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -21,7 +22,8 @@ public class JwtTokenProvider {
 	private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
 
 	public String generateToken(CustomUserDetails user) {
-		return Jwts.builder().setSubject(user.getUsername())
+		return Jwts.builder().setSubject(user.getId().toString())
+				.claim("email", user.getUsername())
 				.claim("roles", user.getAuthorities().stream().map(a -> a.getAuthority()).toList())
 				.setIssuedAt(new Date()).setExpiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000))
 				.signWith(KEY).compact();
@@ -39,12 +41,25 @@ public class JwtTokenProvider {
 	public String generateRefreshToken(CustomUserDetails userDetails) {
 	    // Generate JWT with long expiration, e.g., 7 days
 	    return Jwts.builder()
-	            .setSubject(userDetails.toString())
+	            .setSubject(userDetails.getId().toString())
 	            .setIssuedAt(new Date())
 	            .setExpiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) // 7 days
 	            .signWith(Keys.hmacShaKeyFor(SECRET.getBytes()))
 	            .compact();
 	}
+	
+	
+	public UUID getUserId(String token) {
+	    return UUID.fromString(
+	        Jwts.parserBuilder()
+	            .setSigningKey(KEY)
+	            .build()
+	            .parseClaimsJws(token)
+	            .getBody()
+	            .getSubject()
+	    );
+	}
+
 
 	
 	

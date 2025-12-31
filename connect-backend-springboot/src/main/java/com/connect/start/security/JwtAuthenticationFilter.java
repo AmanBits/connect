@@ -1,6 +1,7 @@
 package com.connect.start.security;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -8,55 +9,72 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.connect.start.entity.User;
+import com.connect.start.repository.UserRepository;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-	private final JwtTokenProvider jwt;
-	private final CustomUserDetailsService service;
+    private final JwtTokenProvider jwt;
+    private final UserRepository userRepository;
 
-	JwtAuthenticationFilter(JwtTokenProvider jwt, CustomUserDetailsService service) {
-		this.jwt = jwt;
-		this.service = service;
-	}
+    public JwtAuthenticationFilter(JwtTokenProvider jwt, UserRepository userRepository) {
+        this.jwt = jwt;
+        this.userRepository = userRepository;
+    }
 
-	private String extractFromCookie(HttpServletRequest request) {
+    private String extractFromCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
 
-		if (request.getCookies() == null) {
-			return null;
-		}
+        for (Cookie cookie : request.getCookies()) {
+            if ("access_token".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
 
-		for (Cookie cookie : request.getCookies()) {
-			if ("access_token".equals(cookie.getName())) {
-				return cookie.getValue();
-			}
-		}
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest req,
+            HttpServletResponse res,
+            FilterChain chain
+    ) throws IOException, ServletException {
 
-		return null;
-	}
+        try {
+            String token = extractFromCookie(req);
 
-	@Override
-	protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
-			throws IOException, ServletException {
+            if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-		String token = extractFromCookie(req);
+                UUID userId = jwt.getUserId(token);
 
-		if (token != null) {
-			String email = jwt.getUsername(token);
-			UserDetails user = service.loadUserByUsername(email);
+                User userEntity = userRepository.findById(userId).orElse(null);
+                if (userEntity != null) {
+                    CustomUserDetails userDetails = new CustomUserDetails(userEntity);
 
-			UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(user, null,
-					user.getAuthorities());
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
 
-			SecurityContextHolder.getContext().setAuthentication(auth);
-		}
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            }
 
-		chain.doFilter(req, res);
-	}
+        } catch (Exception e) {
+            // ❗ Important: clear context on error
+            SecurityContextHolder.clearContext();
+        }
 
+        chain.doFilter(req, res);
+    }
 }
