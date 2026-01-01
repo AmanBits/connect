@@ -2,6 +2,7 @@ package com.connect.start.controller;
 
 import java.util.UUID;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -12,7 +13,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.connect.start.dto.LoginRequest;
 import com.connect.start.dto.SignupRequest;
@@ -20,6 +24,7 @@ import com.connect.start.entity.User;
 import com.connect.start.repository.UserRepository;
 import com.connect.start.security.CustomUserDetails;
 import com.connect.start.security.JwtTokenProvider;
+import com.connect.start.service.Auth;
 import com.connect.start.service.RefreshTokenService;
 
 import jakarta.servlet.http.Cookie;
@@ -35,35 +40,35 @@ public class AuthController {
 	private final PasswordEncoder passwordEncoder;
 	private final UserRepository userRepository;
 	private final RefreshTokenService refreshTokenService;
+	private final Auth authService;
 
 	public AuthController(AuthenticationManager authenticationManager, JwtTokenProvider jwtProvider,
-			PasswordEncoder passwordEncoder, UserRepository userRepository, RefreshTokenService refreshTokenService) {
+			PasswordEncoder passwordEncoder, UserRepository userRepository, RefreshTokenService refreshTokenService,Auth authService) {
 		this.authenticationManager = authenticationManager;
 		this.jwtProvider = jwtProvider;
 		this.passwordEncoder = passwordEncoder;
 		this.userRepository = userRepository;
 		this.refreshTokenService = refreshTokenService;
+		this.authService=authService;
 	}
 
-	@PostMapping("/signup")
-	public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
 
-		if (userRepository.existsByEmail(request.getEmail())) {
-			return ResponseEntity.badRequest().body("Email already in use");
-		}
-
-		User user = new User();
-		user.setEmail(request.getEmail());
-
-		user.setPassword(passwordEncoder.encode(request.getPassword()));
-
-		user.setRole("USER");
-		user.setEnabled(true);
-
-		userRepository.save(user);
-
-		return ResponseEntity.ok("User registered successfully");
+	@PostMapping(value = "/signup", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<?> signup(
+	        @RequestParam String email,
+	        @RequestParam String password,
+	        @RequestParam String fullname,
+	        @RequestParam String username,
+	        @RequestParam(required = false) String phone,
+	        @RequestParam(required = false) String location,
+	        @RequestPart(required = false) MultipartFile profileImage
+	) {
+	    authService.signup(
+	        email, password, fullname, username, phone, location, profileImage
+	    );
+	    return ResponseEntity.ok().build();
 	}
+
 
 	@PostMapping("/login")
 	public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletResponse response) {

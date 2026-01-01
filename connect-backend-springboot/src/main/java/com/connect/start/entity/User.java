@@ -2,11 +2,18 @@ package com.connect.start.entity;
 
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
+
+
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name="users")
 public class User {
@@ -18,6 +25,14 @@ public class User {
 	private String password;
 	private boolean enabled;
 	private String role;
+	
+	
+	  @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+	    private Profile profile;
+	
+	
+	
+	
 	public UUID getId() {
 		return id;
 	}
@@ -48,6 +63,15 @@ public class User {
 	public void setRole(String role) {
 		this.role = role;
 	}
+	public Profile getProfile() {
+		return profile;
+	}
+	public void setProfile(Profile profile) {
+		this.profile = profile;
+	}
+	
+	
+	
 	
 	
 	
