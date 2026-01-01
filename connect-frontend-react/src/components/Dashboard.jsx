@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import Navbar from "./Dashboard/Navbar";
 import ConnectionList from "./Dashboard/ConnectionList";
 import MessageBox from "./Dashboard/MessageBox";
-
-
+import axios from "../assets/js/api";
+import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   const wsRef = useRef(null);
@@ -12,69 +12,17 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [incomingFriendshipRequests, setIncomingFriendshipRequests] = useState(
+    []
+  );
 
-  // 1️⃣ Create WebSocket connection (ONCE)
-  useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8080/ws");
-    wsRef.current = socket;
+  const [hideBox, setHideBox] = useState(true);
+  const [recepient, setRecepient] = useState(null);
 
-    socket.onopen = () => {
-      console.log("WebSocket connected");
+  const [friendList, setfriendList] = useState([]);
 
+  const isMobile = window.innerWidth < 768;
 
-      const interval = setInterval(() => {
-        wsRef.current.send(JSON.stringify({ type: "HEARTBEAT" }));
-      }, 15000);
-
-
-      // Send location if already available
-      if (location) {
-        socket.send(
-          JSON.stringify({
-            type: "LOCATION",
-            latitude: location.lat,
-            longitude: location.lng,
-          })
-        );
-        console.log("Location sent via WS");
-      }
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log(data);
-
-        if (data.type === "MESSAGE") {
-          console.log("Message from:", data.from, data.message);
-          setMessages((prev) => [
-            ...prev,
-            { from: data.from, text: data.message },
-          ]);
-        }
-
-        if (data.type === "NEARBY_USERS") {
-          console.log("Nearby users:", data.users);
-          setNearbyUsers(data.users);
-        }
-      } catch (e) {
-        console.log("Raw message:", event.data);
-      }
-    };
-
-    socket.onerror = (err) => {
-      console.error("WebSocket error", err);
-    };
-
-    socket.onclose = () => {
-      console.log("WebSocket closed");
-      clearInterval(interval);
-    };
-
-    return () => socket.close();
-  }, []); // 🔥 IMPORTANT: empty dependency
-
-  // 2️⃣ Get user geolocation (ONCE)
   useEffect(() => {
     if (!navigator.geolocation) {
       setError("Geolocation not supported");
@@ -82,64 +30,69 @@ export default function Dashboard() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setLocation(loc);
-
-        // Send location immediately if WS is open
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(
-            JSON.stringify({
-              type: "LOCATION",
-              latitude: loc.lat,
-              longitude: loc.lng,
-            })
-          );
-          console.log("Location sent via WS");
-        }
-      },
+      (pos) =>
+        setLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        }),
       (err) => setError(err.message),
       { enableHighAccuracy: true }
     );
   }, []);
 
-  // 3️⃣ Optional: send updated location whenever it changes
   useEffect(() => {
-    if (!location || !wsRef.current) return;
+    const friendList = async () => {
+      try {
+        const res = await axios.get("/friendship/friendList", {
+          withCredentials: true,
+        });
+        
+        console.log(res.data)
+        setfriendList(res.data);
+      } catch (error) {
+        console.log("Error in friend list " + error);
+      }
+    };
 
-    if (wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: "LOCATION",
-          latitude: location.lat,
-          longitude: location.lng,
-        })
-      );
-      console.log("Location updated via WS");
-    }
-  }, [location]);
+    friendList();
+  }, []);
 
-  // 4️⃣ Safe send MESSAGE button
-  const sendMessage = () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({ type: "MESSAGE", message: "Hello nearby users!" })
-      );
-      console.log("Message sent");
-    } else {
-      console.warn("WebSocket not connected yet");
-    }
+  useEffect(() => {
+    const fetchRequests = async () => {
+      const res = await axios.get("/friendship/incomingFriendshipRequest", {
+        withCredentials: true,
+      });
+      console.log(res.data);
+      setIncomingFriendshipRequests(res.data);
+    };
+    fetchRequests();
+  }, []);
+
+  const openBox = async (user) => {
+    await axios.post(
+      "/friendship/sendFriendRequest",
+      { id: user.id },
+      { withCredentials: true }
+    );
+    setRecepient(user);
+    setHideBox(false);
   };
 
-  const [hideBox, setHideBox] = useState(true);
-  const [recepient, setRecepient] = useState([]);
+  const acceptRequest = async (id) => {
+    console.log(id);
+    await axios.post(
+      "/friendship/acceptFriendRequest",
+      { requestId: id },
+      { withCredentials: true }
+    );
+  };
 
-  const openBox = (user) => {
-    console.log(user);
-    if (!hideBox) {
-      setRecepient(user);
-      setHideBox(true);
-    }
+  const rejectRequest = async (id) => {
+    await axios.post(
+      "/friendship/rejectFriendRequest",
+      { requestId: id },
+      { withCredentials: true }
+    );
   };
 
   return (
@@ -147,24 +100,108 @@ export default function Dashboard() {
       <Navbar />
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <div style={{ display: "flex", justifyContent: "space-evenly" }}>
-        <div>Left</div>
+      <div>
+       
+<Link to="/profile">Go to Profile</Link>
+      </div>
 
-        <div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: 16,
+          padding: 16,
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <h4>Friend List</h4>
+          {friendList != [] ? (
+            friendList.map((item, index) => {
+              return <div>
+                  <img
+                src={
+                  item.profileImageUrl
+                    ? `http://localhost:8080${item.profileImageUrl}`
+                    : "/default-avatar.png"
+                }
+                alt={item.fullname}
+                style={styles.avatar}
+              />
+              <p>{item.fullname}</p>
+              </div>
+            })
+          ) : (
+            <span>no friends</span>
+          )}
+        </div>
+
+        <div style={{ flex: 2, minWidth: 0 }}>
           <ConnectionList nearbyUsers={nearbyUsers} openBox={openBox} />
           <MessageBox hideBox={hideBox} recepient={recepient} />
 
           <ul>
-            {messages.map((msg, index) => (
-              <li key={index}>
+            {messages.map((msg, i) => (
+              <li key={i}>
                 <b>{msg.from}</b>: {msg.text}
               </li>
             ))}
           </ul>
         </div>
 
-        <div>Right</div>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: 12,
+          }}
+        >
+          <h4>Friend Requests</h4>
+          {incomingFriendshipRequests.map((req) => (
+            <div
+              key={req.id}
+              style={{
+                marginBottom: 12,
+                wordBreak: "break-all",
+              }}
+            >
+                   <img
+                src={
+                  req.requesterProfileImage
+                    ? `http://localhost:8080${req.requesterProfileImage}`
+                    : "/default-avatar.png"
+                }
+                alt={req.requesterFullname}
+                style={styles.avatar}
+              />
+              <div>{req.requesterFullname}</div>
+              <div style={{ marginTop: 6 }}>
+                <button onClick={() => acceptRequest(req.requestId)}>Accept</button>
+                <button
+                  style={{ marginLeft: 8 }}
+                  onClick={() => rejectRequest(req.requestId)}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
+}
+
+
+const styles = {
+ avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: "50%",
+    objectFit: "cover",
+    marginBottom: 10,
+    border: "2px solid #4f46e5",
+  }
+
 }

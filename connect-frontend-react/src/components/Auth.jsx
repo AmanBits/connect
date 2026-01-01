@@ -1,31 +1,18 @@
 import React, { useState } from "react";
 import "../assets/css/auth.css";
 import api from "../assets/js/api";
+import { useAuth } from "./AuthContext";
+import { Link } from "react-router-dom";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const { login } = useAuth();
+
   const handleLogin = async (e) => {
-    e.preventDefault(); // prevent page reload
-
-    try {
-      const response = await api.post(
-        "/auth/login",
-        { email, password },
-        {
-          headers: { "Device-Id": "my-device-123" },
-        }
-      );
-
-      // localStorage.setItem("accessToken", response.data.accessToken);
-      // localStorage.setItem("refreshToken", response.data.refreshToken);
-
-      window.location.href = "/dashboard"; // redirect after login
-      console.log("Login response:", response.data);
-    } catch (error) {
-      console.error("Login error:", error.response?.data || error.message);
-    }
+    e.preventDefault();
+    await login({ email, password });
   };
 
   const googleAuth = () => {
@@ -69,6 +56,7 @@ export default function Auth() {
         </form>
 
         <div className="divider">OR</div>
+        <Link to="/signup">Signup</Link>
 
         <button className="btn-oauth google" onClick={googleAuth}>
           <span className="icon">G</span> Login with Google

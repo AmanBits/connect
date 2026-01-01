@@ -1,91 +1,160 @@
-import { useEffect, useState } from "react";
-import "../../assets/css/dashboard/profileCarousel.css";
+import { useEffect, useState, useRef } from "react";
 import axios from "../../assets/js/api";
 
 export default function ConnectionList({ openBox }) {
-  const [users, setUsers] = useState([]); // ✅ must be array
+  const [users, setUsers] = useState([]);
   const [index, setIndex] = useState(0);
+  const windowRef = useRef(null);
 
-  const CARD_WIDTH = 220; // MUST match CSS
-  const VISIBLE = 5;
-  const CENTER = Math.floor(VISIBLE / 2);
+  const CARD_WIDTH = 220;
+  const GAP = 16;
+  const [visibleCards, setVisibleCards] = useState(3);
 
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await axios.get("/api/my/users");
-        setUsers(res?.data?.data || []);
-        setIndex(CENTER); // reset index after data load
-      } catch (error) {
-        console.error("Failed to fetch users:", error);
+        const res = await axios.get("/friendship/suggestedUsers", {
+          withCredentials: true,
+        });
+        setUsers(res.data || []);
+      } catch (err) {
+        console.error(err);
       }
     };
-
     fetchUsers();
   }, []);
 
-  if (users.length === 0) {
-    return <div className="carousel-container">No users found</div>;
-  }
+  // Adjust visible cards dynamically
+  useEffect(() => {
+    const handleResize = () => {
+      if (!windowRef.current) return;
+      const width = windowRef.current.offsetWidth;
+      const count = Math.floor(width / (CARD_WIDTH + GAP));
+      setVisibleCards(count > 0 ? count : 1);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  const min = CENTER;
-  const max = users.length - CENTER - 1;
+  const maxIndex = Math.max(users.length - visibleCards, 0);
 
-  const prev = () => {
-    if (index > min) setIndex((prev) => prev - 1);
-  };
+  const prev = () => setIndex((p) => Math.max(p - 1, 0));
+  const next = () => setIndex((p) => Math.min(p + 1, maxIndex));
 
-  const next = () => {
-    if (index < max) setIndex((prev) => prev + 1);
-  };
+  if (!users.length) return <div style={styles.empty}>No suggestions right now</div>;
 
   return (
-    <div className="carousel-container">
-      <button className="nav-btn prev" onClick={prev} disabled={index <= min}>
+    <div style={styles.container}>
+      {/* LEFT NAV */}
+      <button
+        onClick={prev}
+        disabled={index === 0}
+        style={{ ...styles.navBtn, ...(index === 0 && styles.disabledBtn) }}
+      >
         ‹
       </button>
 
-      <div className="carousel-window">
-        <div className="carousel-header">
-          <span>Connected People : Around you in </span>
-          <select>
-            {[2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 30].map((km) => (
-              <option key={km} value={km}>
-                {km} KM
-              </option>
-            ))}
-          </select>
-        </div>
-
+      {/* WINDOW */}
+      <div style={styles.window} ref={windowRef}>
         <div
-          className="carousel"
           style={{
-            transform: `translateX(-${(index - CENTER) * CARD_WIDTH}px)`,
+            ...styles.carousel,
+            transform: `translateX(-${index * (CARD_WIDTH + GAP)}px)`,
           }}
         >
-          {users.map((user, i) => {
-            const distance = Math.abs(i - index);
-
-            return (
-              <div
-                key={user.id || i}
-                className={`profile ${i === index ? "active" : ""}`}
-                style={{
-                  opacity: distance > 2 ? 0.3 : 0.6,
-                  transform: `scale(${i === index ? 1 : 0.85})`,
-                }}
-              >
-                <h3>{user.name}</h3>
-                <button onClick={() => openBox(user)}>Connect</button>
-              </div>
-            );
-          })}
+          {users.map((user) => (
+            <div key={user.id} style={styles.card}>
+              <img
+                src={
+                  user.profileImageUrl
+                    ? `http://localhost:8080${user.profileImageUrl}`
+                    : "/default-avatar.png"
+                }
+                alt={user.fullname}
+                style={styles.avatar}
+              />
+              <h4 style={styles.name}>{user.fullname}</h4>
+              {user.bio && <p style={styles.bio}>{user.bio}</p>}
+              {user.location && <p style={styles.location}>📍 {user.location}</p>}
+              <button style={styles.connectBtn} onClick={() => openBox(user)}>
+                Connect
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 
-      <button className="nav-btn next" onClick={next} disabled={index >= max}>
+      {/* RIGHT NAV */}
+      <button
+        onClick={next}
+        disabled={index === maxIndex}
+        style={{ ...styles.navBtn, ...(index === maxIndex && styles.disabledBtn) }}
+      >
         ›
       </button>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    display: "flex",
+    alignItems: "center",
+    width: "100%",
+    padding: "10px 0",
+  },
+  window: {
+    overflow: "hidden",
+    flex: 1,
+  },
+  carousel: {
+    display: "flex",
+    gap: 10,
+    transition: "transform 0.4s ease",
+  },
+  card: {
+    width: 220,
+    minWidth: 220,
+    background: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: "50%",
+    objectFit: "cover",
+    marginBottom: 10,
+    border: "2px solid #4f46e5",
+  },
+  name: { fontSize: 16, fontWeight: 600, marginBottom: 4 },
+  bio: { fontSize: 13, color: "#555", marginBottom: 6 },
+  location: { fontSize: 12, color: "#777", marginBottom: 10 },
+  connectBtn: {
+    marginTop: "auto",
+    padding: "8px 16px",
+    borderRadius: 20,
+    border: "none",
+    background: "#4f46e5",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+  navBtn: {
+    border: "none",
+    background: "transparent",
+    fontSize: 34,
+    cursor: "pointer",
+    padding: "0 12px",
+    color: "#4f46e5",
+  },
+  disabledBtn: { opacity: 0.3, cursor: "not-allowed" },
+  empty: { padding: 20, textAlign: "center", color: "#777" },
+};
