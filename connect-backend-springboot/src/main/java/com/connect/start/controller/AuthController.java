@@ -79,13 +79,13 @@ public class AuthController {
 
 		CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
 
-		String accessToken = jwtProvider.generateToken(user);
+		String accessToken = jwtProvider.generateAccessToken(user);
 
 		String refreshToken = jwtProvider.generateRefreshToken(user);
 
 		refreshTokenService.saveToken(refreshToken, user.getId().toString(), 7 * 24 * 3600);
 
-		jwtProvider.addTokenToCookie(response, accessToken);
+		jwtProvider.addAccessTokenCookie(response, accessToken);
 
 		Cookie rtCookie = new Cookie("REFRESH_TOKEN", refreshToken);
 		rtCookie.setHttpOnly(true);
@@ -136,12 +136,12 @@ public class AuthController {
 			return ResponseEntity.status(401).body("Invalid refresh token");
 
 		User user = userRepository.findById(UUID.fromString(userId)).orElseThrow();
-		String newAccessToken = jwtProvider.generateToken(new CustomUserDetails(user));
+		String newAccessToken = jwtProvider.generateAccessToken(new CustomUserDetails(user));
 
 		String newRefreshToken = jwtProvider.generateRefreshToken(new CustomUserDetails(user));
 		refreshTokenService.saveToken(newRefreshToken, userId.toString(), 7 * 24 * 3600); // 7 days
 
-		jwtProvider.addTokenToCookie(response, newAccessToken); // JWT cookie
+		jwtProvider.addAccessTokenCookie(response, newAccessToken); // JWT cookie
 		Cookie rtCookie = new Cookie("REFRESH_TOKEN", newRefreshToken);
 		rtCookie.setHttpOnly(true);
 		rtCookie.setPath("/");
@@ -168,8 +168,8 @@ public class AuthController {
 			return ResponseEntity.status(401).build();
 		}
 
-		String userId = jwtProvider.getUsername(token);
-		User user = userRepository.findById(UUID.fromString(userId)).orElseThrow();
+		UUID userId = jwtProvider.getUserId(token);
+		User user = userRepository.findById(userId).orElseThrow();
 
 		return ResponseEntity.ok(user);
 	}

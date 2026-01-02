@@ -6,10 +6,10 @@ import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,59 +17,74 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class JwtTokenProvider {
 
-	private static final String SECRET = "sdjfjksgdftdyuftuy786876378bsdf98908d0ffjljfdjfdsf8sf867jekwhrehkjhdydsf7dskhfdjf";
+    // ✅ 64+ bytes secret (OK for HS512)
+    private static final String SECRET =
+        "sdjfjksgdftdyuftuy786876378bsdf98908d0ffjljfdjfdsf76273672367263968128sf867jekwhrehkjhdydsf7dskhfdjf";
 
-	private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+    // ✅ SINGLE KEY used everywhere
+    private static final SecretKey KEY =
+        Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
 
-	public String generateToken(CustomUserDetails user) {
-		return Jwts.builder().setSubject(user.getId().toString())
-				.claim("email", user.getUsername())
-				.claim("roles", user.getAuthorities().stream().map(a -> a.getAuthority()).toList())
-				.setIssuedAt(new Date()).setExpiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000))
-				.signWith(KEY).compact();
-	}
+    // ===================== ACCESS TOKEN =====================
+    public String generateAccessToken(CustomUserDetails user) {
+        return Jwts.builder()
+            .setSubject(user.getId().toString()) // USER ID ONLY
+            .claim("email", user.getUsername())
+            .claim("roles",
+                user.getAuthorities().stream()
+                    .map(a -> a.getAuthority())
+                    .toList()
+            )
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000)) // 15 min
+            .signWith(KEY, SignatureAlgorithm.HS512)
+            .compact();
+    }
 
-	public String getUsername(String token) {
-		if (token.startsWith("Bearer ")) {
-			token = token.substring(7);
-		}
+    // ===================== REFRESH TOKEN =====================
+    public String generateRefreshToken(CustomUserDetails user) {
+        return Jwts.builder()
+            .setSubject(user.getId().toString())
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000)) // 7 days
+            .signWith(KEY, SignatureAlgorithm.HS512)
+            .compact();
+    }
 
-		return Jwts.parserBuilder().setSigningKey(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).build()
-				.parseClaimsJws(token).getBody().getSubject();
-	}
-	
-	public String generateRefreshToken(CustomUserDetails userDetails) {
-	    // Generate JWT with long expiration, e.g., 7 days
-	    return Jwts.builder()
-	            .setSubject(userDetails.getId().toString())
-	            .setIssuedAt(new Date())
-	            .setExpiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) // 7 days
-	            .signWith(Keys.hmacShaKeyFor(SECRET.getBytes()))
-	            .compact();
-	}
-	
-	
-	public UUID getUserId(String token) {
-	    return UUID.fromString(
-	        Jwts.parserBuilder()
-	            .setSigningKey(KEY)
-	            .build()
-	            .parseClaimsJws(token)
-	            .getBody()
-	            .getSubject()
-	    );
-	}
+    // ===================== VALIDATION =====================
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                .setSigningKey(KEY)
+                .build()
+                .parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
+    // ===================== EXTRACT USER ID =====================
+    public UUID getUserId(String token) {
+        return UUID.fromString(
+            Jwts.parserBuilder()
+                .setSigningKey(KEY)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject()
+        );
+    }
 
-	
-	
-	 public void addTokenToCookie(HttpServletResponse response, String token) {
-	        Cookie cookie = new Cookie("access_token", token);
-	        cookie.setHttpOnly(true);          // prevents JS access
-	        cookie.setSecure(false);           // set true if using HTTPS
-	        cookie.setPath("/");               // cookie valid for entire site
-	        cookie.setMaxAge(60 * 60 * 24);    // 1 day in seconds
-	        response.addCookie(cookie);
-	    }
+    // ===================== COOKIE HELPERS =====================
+    public void addAccessTokenCookie(HttpServletResponse response, String token) {
+        Cookie cookie = new Cookie("access_token", token);
+        cookie.setHttpOnly(false);      // ✅ MUST be true
+        cookie.setSecure(false);       // true in HTTPS
+        cookie.setPath("/");
+        cookie.setMaxAge(15 * 60);     // 15 minutes
+        response.addCookie(cookie);
+    }
+
 
 }
