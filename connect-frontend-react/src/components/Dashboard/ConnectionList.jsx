@@ -43,7 +43,8 @@ export default function ConnectionList({ openBox }) {
   const prev = () => setIndex((p) => Math.max(p - 1, 0));
   const next = () => setIndex((p) => Math.min(p + 1, maxIndex));
 
-  if (!users.length) return <div style={styles.empty}>No suggestions right now</div>;
+  if (!users.length)
+    return <div style={styles.empty}>No suggestions right now</div>;
 
   return (
     <div style={styles.container}>
@@ -104,6 +105,7 @@ const styles = {
     alignItems: "center",
     width: "100%",
     padding: "10px 0",
+    position: "relative",
   },
   window: {
     overflow: "hidden",
@@ -111,7 +113,7 @@ const styles = {
   },
   carousel: {
     display: "flex",
-    gap: 10,
+    gap: 16, // smoother spacing
     transition: "transform 0.4s ease",
   },
   card: {
@@ -120,11 +122,12 @@ const styles = {
     background: "#fff",
     borderRadius: 16,
     padding: 16,
-    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
     textAlign: "center",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
+    transition: "transform 0.3s",
   },
   avatar: {
     width: 72,
@@ -133,6 +136,7 @@ const styles = {
     objectFit: "cover",
     marginBottom: 10,
     border: "2px solid #4f46e5",
+    transition: "transform 0.3s",
   },
   name: { fontSize: 16, fontWeight: 600, marginBottom: 4 },
   bio: { fontSize: 13, color: "#555", marginBottom: 6 },
@@ -146,14 +150,16 @@ const styles = {
     color: "#fff",
     cursor: "pointer",
     fontWeight: 600,
+    transition: "background 0.3s",
   },
   navBtn: {
     border: "none",
     background: "transparent",
-    fontSize: 34,
+    fontSize: 32,
     cursor: "pointer",
     padding: "0 12px",
     color: "#4f46e5",
+    userSelect: "none",
   },
   disabledBtn: { opacity: 0.3, cursor: "not-allowed" },
   empty: { padding: 20, textAlign: "center", color: "#777" },

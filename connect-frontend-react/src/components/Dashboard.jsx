@@ -10,19 +10,18 @@ export default function Dashboard() {
 
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
+
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [incomingFriendshipRequests, setIncomingFriendshipRequests] = useState(
-    []
-  );
 
   const [hideBox, setHideBox] = useState(true);
   const [recepient, setRecepient] = useState(null);
 
-  const [friendList, setfriendList] = useState([]);
+  const [friendList, setFriendList] = useState([]);
 
   const isMobile = window.innerWidth < 768;
 
+  /* ---------------- GEO ---------------- */
   useEffect(() => {
     if (!navigator.geolocation) {
       setError("Geolocation not supported");
@@ -35,62 +34,37 @@ export default function Dashboard() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         }),
-      (err) => setError(err.message),
-      { enableHighAccuracy: true }
+      (err) => setError(err.message)
     );
   }, []);
 
+  /* ---------------- FRIEND LIST ---------------- */
   useEffect(() => {
-    const friendList = async () => {
+    const fetchFriendList = async () => {
       try {
         const res = await axios.get("/friendship/friendList", {
           withCredentials: true,
         });
-        
-        console.log(res.data)
-        setfriendList(res.data);
-      } catch (error) {
-        console.log("Error in friend list " + error);
+        setFriendList(res.data);
+      } catch (err) {
+        console.error(err);
       }
     };
 
-    friendList();
+    fetchFriendList();
   }, []);
 
-  useEffect(() => {
-    const fetchRequests = async () => {
-      const res = await axios.get("/friendship/incomingFriendshipRequest", {
-        withCredentials: true,
-      });
-      console.log(res.data);
-      setIncomingFriendshipRequests(res.data);
-    };
-    fetchRequests();
-  }, []);
+  /* ---------------- OPEN CHAT ---------------- */
+  const openChat = (friend) => {
+    setRecepient(friend);
+    setHideBox(false); // ✅ open message box
+  };
 
+  /* ---------------- SEND FRIEND REQUEST ---------------- */
   const openBox = async (user) => {
     await axios.post(
       "/friendship/sendFriendRequest",
       { id: user.id },
-      { withCredentials: true }
-    );
-    setRecepient(user);
-    setHideBox(false);
-  };
-
-  const acceptRequest = async (id) => {
-    console.log(id);
-    await axios.post(
-      "/friendship/acceptFriendRequest",
-      { requestId: id },
-      { withCredentials: true }
-    );
-  };
-
-  const rejectRequest = async (id) => {
-    await axios.post(
-      "/friendship/rejectFriendRequest",
-      { requestId: id },
       { withCredentials: true }
     );
   };
@@ -100,108 +74,90 @@ export default function Dashboard() {
       <Navbar />
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <div>
-       
-<Link to="/profile">Go to Profile</Link>
-      </div>
+     
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          gap: 16,
-          padding: 16,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <h4>Friend List</h4>
-          {friendList != [] ? (
-            friendList.map((item, index) => {
-              return <div>
-                  <img
-                src={
-                  item.profileImageUrl
-                    ? `http://localhost:8080${item.profileImageUrl}`
-                    : "/default-avatar.png"
-                }
-                alt={item.fullname}
-                style={styles.avatar}
-              />
-              <p>{item.fullname}</p>
-              </div>
-            })
-          ) : (
-            <span>no friends</span>
-          )}
-        </div>
+      <div style={styles.container(isMobile)}>
+        {/* ---------------- LEFT COLUMN ---------------- */}
+        <div style={styles.left}>
+          <h4>Friends</h4>
 
-        <div style={{ flex: 2, minWidth: 0 }}>
-          <ConnectionList nearbyUsers={nearbyUsers} openBox={openBox} />
-          <MessageBox hideBox={hideBox} recepient={recepient} />
+          {friendList.length === 0 && <p>No friends</p>}
 
-          <ul>
-            {messages.map((msg, i) => (
-              <li key={i}>
-                <b>{msg.from}</b>: {msg.text}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            border: "1px solid #ddd",
-            borderRadius: 8,
-            padding: 12,
-          }}
-        >
-          <h4>Friend Requests</h4>
-          {incomingFriendshipRequests.map((req) => (
+          {friendList.map((friend) => (
             <div
-              key={req.id}
-              style={{
-                marginBottom: 12,
-                wordBreak: "break-all",
-              }}
+              key={friend.id}
+              style={styles.friendItem}
+              onClick={() => openChat(friend)}
             >
-                   <img
+            {friend.online ? "🟢" : "⚫"}
+              <img
                 src={
-                  req.requesterProfileImage
-                    ? `http://localhost:8080${req.requesterProfileImage}`
+                  friend.profileImageUrl
+                    ? `http://localhost:8080${friend.profileImageUrl}`
                     : "/default-avatar.png"
                 }
-                alt={req.requesterFullname}
+                alt={friend.fullname}
                 style={styles.avatar}
               />
-              <div>{req.requesterFullname}</div>
-              <div style={{ marginTop: 6 }}>
-                <button onClick={() => acceptRequest(req.requestId)}>Accept</button>
-                <button
-                  style={{ marginLeft: 8 }}
-                  onClick={() => rejectRequest(req.requestId)}
-                >
-                  Reject
-                </button>
-              </div>
+              <span>{friend.fullname}</span>
             </div>
           ))}
+        </div>
+
+        {/* ---------------- CENTER COLUMN ---------------- */}
+        <div style={styles.center}>
+          <ConnectionList nearbyUsers={nearbyUsers} openBox={openBox} />
+
+          {!hideBox && <MessageBox recepient={recepient} />}
+        </div>
+
+        {/* ---------------- RIGHT COLUMN ---------------- */}
+        <div style={styles.right}>
+          {/* Future: FriendRequestButton / Info */}
         </div>
       </div>
     </div>
   );
 }
-
-
 const styles = {
- avatar: {
-    width: 72,
-    height: 72,
+  container: (isMobile) => ({
+    display: "flex",
+    flexDirection: isMobile ? "column" : "row",
+    gap: 16,
+    padding: 16,
+  }),
+
+  left: {
+    flex: 1,
+    borderRight: "1px solid #eee",
+  },
+
+  center: {
+    flex: 2,
+    minWidth: 0,
+  },
+
+  right: {
+    flex: 1,
+    borderLeft: "1px solid #eee",
+  },
+
+  friendItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: 10,
+    cursor: "pointer",
+    borderRadius: 8,
+  },
+
+  avatar: {
+    width: 48,
+    height: 48,
     borderRadius: "50%",
     objectFit: "cover",
-    marginBottom: 10,
     border: "2px solid #4f46e5",
-  }
+  },
 
-}
+ 
+};
