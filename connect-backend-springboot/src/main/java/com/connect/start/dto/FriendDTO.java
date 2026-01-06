@@ -10,21 +10,41 @@ public class FriendDTO {
     private String username;
     private boolean online;
     private String profileImageUrl;
+	private UUID senderId;
 
     public FriendDTO(
         UUID friendshipId,
+        UUID senderId,
         UUID userId,
         String fullname,
         String username,
         String profileImageUrl
     ) {
         this.friendshipId = friendshipId;
+        this.senderId = senderId;
         this.userId = userId;
         this.fullname = fullname;
         this.username = username;
         this.profileImageUrl = profileImageUrl;
         this.online = false; // default
     }
+    
+    
+    
+
+	public UUID getSenderId() {
+		return senderId;
+	}
+
+
+
+
+	public void setSenderId(UUID senderId) {
+		this.senderId = senderId;
+	}
+
+
+
 
 	public UUID getFriendshipId() {
 		return friendshipId;
