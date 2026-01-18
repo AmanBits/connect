@@ -1,13 +1,14 @@
-// src/App.jsx
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./components/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Auth from "./components/Auth";
-import Dashboard from "./components/Dashboard";
-import OAuthSuccess from "./components/OAuthSuccess";
-import ProfileDashboard from "./components/Profile/ProfileDashboard";
 import Signup from "./components/Signup";
+import OAuthSuccess from "./components/OAuthSucess";
+import Dashboard from "./components/Dashboard";
+import ProfileDashboard from "./components/ProfileDashboard";
+
 
 export default function App() {
   return (
@@ -15,12 +16,12 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Auth />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
-          <Route path="/signup" element={<Signup/>}/>
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<ProfileDashboard/>}/>
+            <Route path="/profile" element={<ProfileDashboard />} />
           </Route>
         </Routes>
       </BrowserRouter>

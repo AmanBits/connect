@@ -1,124 +1,180 @@
 import React, { useEffect, useRef, useState } from "react";
-import Navbar from "./Dashboard/Navbar";
-import ConnectionList from "./Dashboard/ConnectionList";
-import MessageBox from "./Dashboard/MessageBox";
+import Navbar from "./Navbar";
+import ConnectionList from "./ConnectionList";
+import MessageBox from "./MessageBox";
 import axios from "../assets/js/api";
-import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   const wsRef = useRef(null);
 
-  const [location, setLocation] = useState(null);
-  const [error, setError] = useState(null);
-
-  const [nearbyUsers, setNearbyUsers] = useState([]);
-  const [messages, setMessages] = useState([]);
-
-  const [hideBox, setHideBox] = useState(true);
-  const [recepient, setRecepient] = useState(null);
-
+  const [activeChat, setActiveChat] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [friendList, setFriendList] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [convId, setConvId] = useState(null);
 
   const isMobile = window.innerWidth < 768;
 
-  /* ---------------- GEO ---------------- */
+  /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setError("Geolocation not supported");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        setLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        }),
-      (err) => setError(err.message)
-    );
+    const loadInitial = async () => {
+      const [notifRes, countRes] = await Promise.all([
+        axios.get("/notifications"),
+        axios.get("/notifications/unread-count"),
+      ]);
+      setNotifications(notifRes.data);
+      setUnreadCount(countRes.data.count);
+    };
+    loadInitial();
   }, []);
 
-  /* ---------------- FRIEND LIST ---------------- */
+  /* ---------------- WEBSOCKET ---------------- */
   useEffect(() => {
-    const fetchFriendList = async () => {
-      try {
-        const res = await axios.get("/friendship/friendList", {
-          withCredentials: true,
-        });
-        setFriendList(res.data);
-      } catch (err) {
-        console.error(err);
+    const socket = new WebSocket("ws://localhost:8080/ws/notifications");
+    wsRef.current = socket;
+
+    socket.onopen = () => {
+      const ping = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "PING" }));
+        }
+      }, 10000);
+      socket._ping = ping;
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      /* ---- Notifications ---- */
+      if (data.type === "FRIEND_REQUEST") {
+        setNotifications((prev) => [{ ...data, read: false }, ...prev]);
+        setUnreadCount((prev) => prev + 1);
+
+        window.dispatchEvent(
+          new CustomEvent("friend-request", { detail: data })
+        );
+      }
+
+      if (data.type === "PRESENCE") {
+        setFriendList((prev) =>
+          prev.map((f) =>
+            String(f.userId) === String(data.userId)
+              ? { ...f, online: data.online }
+              : f
+          )
+        );
+        return;
+      }
+
+      if (data.type === "REQUEST_ACCEPT") {
+        alert(data.message);
+        return;
+      }
+
+     
+
+      /* ---- CHAT EVENTS ---- */
+      if (
+        data.eventType === "CHAT_MESSAGE" ||
+        data.eventType === "MESSAGE_ACK"
+      ) {
+        window.dispatchEvent(new CustomEvent("chat-message", { detail: data }));
       }
     };
 
-    fetchFriendList();
+    return () => {
+      clearInterval(socket._ping);
+      socket.close();
+    };
+  }, []);
+
+  const openBox = async (user) => {
+    try {
+      const res = await axios.post("/friendship/sendFriendRequest", {
+        id: user.id,
+      });
+      console.log(res);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  /* ---------------- FRIEND LIST ---------------- */
+  useEffect(() => {
+    axios
+      .get("/friendship/friendList", { withCredentials: true })
+      .then((res) => setFriendList(res.data));
   }, []);
 
   /* ---------------- OPEN CHAT ---------------- */
-  const openChat = (friend) => {
-    setRecepient(friend);
-    setHideBox(false); // ✅ open message box
-  };
+  const openChat = async (friend) => {
+    try {
+      const res = await axios.post("/conversation", {
+        friendId: friend.userId,
+      });
 
-  /* ---------------- SEND FRIEND REQUEST ---------------- */
-  const openBox = async (user) => {
-    await axios.post(
-      "/friendship/sendFriendRequest",
-      { id: user.id },
-      { withCredentials: true }
-    );
+      if (res.data.id) {
+        const msgRes = await axios.get(`/messages/${res.data.id}`);
+        setConvId(res.data.id);
+        setMessages(msgRes.data);
+      }
+
+      setActiveChat(friend);
+    } catch (err) {
+      console.error("Open chat error:", err);
+    }
   };
 
   return (
     <div>
-      <Navbar />
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-     
+      <Navbar
+        notifications={notifications}
+        unreadCount={unreadCount}
+        convId={convId}
+        onOpenNotifications={async() => {
+             try {
+              const res = await axios.put("/notifications/read-all");
+              setUnreadCount(0);
+              
+             } catch (error) {
+              console.log("OPEN NOZTIFICATION ERROR");
+             }
+        }}
+      />
 
       <div style={styles.container(isMobile)}>
-        {/* ---------------- LEFT COLUMN ---------------- */}
         <div style={styles.left}>
           <h4>Friends</h4>
-
-          {friendList.length === 0 && <p>No friends</p>}
-
           {friendList.map((friend) => (
             <div
-              key={friend.id}
+              key={friend.userId}
               style={styles.friendItem}
               onClick={() => openChat(friend)}
             >
-            {friend.online ? "🟢" : "⚫"}
-              <img
-                src={
-                  friend.profileImageUrl
-                    ? `http://localhost:8080${friend.profileImageUrl}`
-                    : "/default-avatar.png"
-                }
-                alt={friend.fullname}
-                style={styles.avatar}
-              />
-              <span>{friend.fullname}</span>
+              {friend.online ? "🟢" : "⚫"} {friend.fullname}
             </div>
           ))}
         </div>
 
-        {/* ---------------- CENTER COLUMN ---------------- */}
         <div style={styles.center}>
-          <ConnectionList nearbyUsers={nearbyUsers} openBox={openBox} />
+          <ConnectionList openBox={openBox} />
 
-          {!hideBox && <MessageBox recepient={recepient} />}
-        </div>
-
-        {/* ---------------- RIGHT COLUMN ---------------- */}
-        <div style={styles.right}>
-          {/* Future: FriendRequestButton / Info */}
+          {activeChat && (
+            <MessageBox
+              friend={activeChat}
+              wsRef={wsRef}
+              message={messages}
+              convId={convId}
+              onClose={() => setActiveChat(null)}
+            />
+          )}
         </div>
       </div>
     </div>
   );
 }
+
 const styles = {
   container: (isMobile) => ({
     display: "flex",
@@ -126,38 +182,7 @@ const styles = {
     gap: 16,
     padding: 16,
   }),
-
-  left: {
-    flex: 1,
-    borderRight: "1px solid #eee",
-  },
-
-  center: {
-    flex: 2,
-    minWidth: 0,
-  },
-
-  right: {
-    flex: 1,
-    borderLeft: "1px solid #eee",
-  },
-
-  friendItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: 10,
-    cursor: "pointer",
-    borderRadius: 8,
-  },
-
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: "50%",
-    objectFit: "cover",
-    border: "2px solid #4f46e5",
-  },
-
- 
+  left: { flex: 1 },
+  center: { flex: 2 },
+  friendItem: { padding: 10, cursor: "pointer" },
 };
